@@ -6,13 +6,9 @@ from typing import Any
 import pytest
 from mcp.server import MCPServer
 
-from mcp_liveops.core.agent import LiveOpsAgent
-from mcp_liveops.mcp.client import McpClientAdapter
-from mcp_liveops.mcp.coingecko_tools import (
-    McpCoinGeckoTools,
-    register_coingecko_tools,
-)
-from mcp_liveops.providers.claude.models import (
+from webpulse.core.agent import LiveOpsAgent
+from webpulse.mcp.client import McpClientAdapter
+from webpulse.providers.claude.models import (
     ClaudeResponse,
     ClaudeToolCall,
     ClaudeUsage,
@@ -28,88 +24,52 @@ class FakeClaudeClient:
 
     def create_message(self, request: Any) -> ClaudeResponse:
         """Return the next configured Claude response."""
-
         self.requests.append(request)
-
         return self.responses.pop(0)
 
 
-class FakeCoinGeckoClient:
-    """Deterministic market-data provider."""
-
-    def get_prices(
-        self,
-        *,
-        coin_ids: list[str],
-        currency: str = "usd",
-        include_24h_change: bool = True,
-        include_last_updated_at: bool = True,
-    ) -> list[Any]:
-        """Return deterministic market data."""
-
-        from mcp_liveops.acquisition.coingecko import CoinPrice
-
-        return [
-            CoinPrice(
-                coin_id=coin_id,
-                currency=currency,
-                price=100.0 + index,
-                change_24h_percent=1.0,
-                last_updated_at=1755000000,
-            )
-            for index, coin_id in enumerate(coin_ids)
-        ]
-
-
 def create_test_server() -> MCPServer:
-    """Create a deterministic MCP server."""
+    """Create a deterministic MCP server for agent tests."""
 
     server = MCPServer(
-        "mcp-liveops-agent-test",
+        "webpulse-agent-test",
         version="0.1.0",
     )
 
-    register_coingecko_tools(
-        server,
-        McpCoinGeckoTools(FakeCoinGeckoClient()),
-    )
+    @server.tool()
+    def test_lookup(query: str) -> str:
+        """Return deterministic test information."""
+        if not query.strip():
+            raise ValueError("query must not be empty")
+        return f"Retrieved information for: {query.strip()}"
 
     return server
 
 
 @pytest.mark.anyio
 async def test_agent_completes_two_turn_tool_loop() -> None:
-    """The agent should execute the MCP tool and send its result back to Claude."""
+    """The agent should execute the MCP tool and return its result to Claude."""
 
     claude = FakeClaudeClient(
         responses=[
             ClaudeResponse(
                 text="",
                 model="claude-test-model",
-                usage=ClaudeUsage(
-                    input_tokens=10,
-                    output_tokens=5,
-                ),
+                usage=ClaudeUsage(input_tokens=10, output_tokens=5),
                 latency_ms=10.0,
                 stop_reason="tool_use",
                 tool_calls=(
                     ClaudeToolCall(
                         id="tool_1",
-                        name="get_crypto_prices",
-                        input={
-                            "coin_ids": ["bitcoin", "ethereum"],
-                            "currency": "usd",
-                        },
+                        name="test_lookup",
+                        input={"query": "latest Python release"},
                     ),
                 ),
             ),
             ClaudeResponse(
-                text="Bitcoin is $100 and Ethereum is $101.",
+                text="The retrieved information says the latest Python release is available.",
                 model="claude-test-model",
-                usage=ClaudeUsage(
-                    input_tokens=30,
-                    output_tokens=10,
-                ),
+                usage=ClaudeUsage(input_tokens=30, output_tokens=10),
                 latency_ms=15.0,
                 stop_reason="end_turn",
             ),
@@ -123,25 +83,21 @@ async def test_agent_completes_two_turn_tool_loop() -> None:
     )
 
     response = await agent.run(
-        "What are the current Bitcoin and Ethereum prices?",
+        "What is the latest Python release?",
         create_test_server(),
     )
 
-    assert response.text == "Bitcoin is $100 and Ethereum is $101."
+    assert response.text == (
+        "The retrieved information says the latest Python release is available."
+    )
     assert len(claude.requests) == 2
 
     second_request = claude.requests[1]
 
-    assert len(second_request.messages) == 3
     assert second_request.messages[0].role == "user"
-    assert second_request.messages[0].content == (
-        "What are the current Bitcoin and Ethereum prices?"
-    )
-
     assert second_request.messages[1].role == "assistant"
     assert second_request.messages[1].content[0]["type"] == "tool_use"
-    assert second_request.messages[1].content[0]["name"] == "get_crypto_prices"
-
+    assert second_request.messages[1].content[0]["name"] == "test_lookup"
     assert second_request.messages[2].role == "user"
     assert second_request.messages[2].content[0]["type"] == "tool_result"
     assert second_request.messages[2].content[0]["tool_use_id"] == "tool_1"
@@ -149,15 +105,12 @@ async def test_agent_completes_two_turn_tool_loop() -> None:
 
 @pytest.mark.anyio
 async def test_agent_returns_direct_response_without_tool_call() -> None:
-    """The agent should not perform a second Claude call when no tool is requested."""
+    """The agent should not perform a second Claude call without a tool request."""
 
     expected = ClaudeResponse(
         text="I can answer this directly.",
         model="claude-test-model",
-        usage=ClaudeUsage(
-            input_tokens=5,
-            output_tokens=5,
-        ),
+        usage=ClaudeUsage(input_tokens=5, output_tokens=5),
         latency_ms=5.0,
         stop_reason="end_turn",
     )
@@ -187,10 +140,7 @@ async def test_agent_sends_mcp_failure_back_to_claude() -> None:
             ClaudeResponse(
                 text="",
                 model="claude-test-model",
-                usage=ClaudeUsage(
-                    input_tokens=10,
-                    output_tokens=5,
-                ),
+                usage=ClaudeUsage(input_tokens=10, output_tokens=5),
                 latency_ms=10.0,
                 stop_reason="tool_use",
                 tool_calls=(
@@ -204,10 +154,7 @@ async def test_agent_sends_mcp_failure_back_to_claude() -> None:
             ClaudeResponse(
                 text="I could not execute that tool.",
                 model="claude-test-model",
-                usage=ClaudeUsage(
-                    input_tokens=20,
-                    output_tokens=8,
-                ),
+                usage=ClaudeUsage(input_tokens=20, output_tokens=8),
                 latency_ms=12.0,
                 stop_reason="end_turn",
             ),

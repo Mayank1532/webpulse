@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from mcp_liveops.mcp import (
+from webpulse.mcp import (
     McpClientAdapter,
     ToolExecutionResult,
     ToolMetadata,
@@ -78,14 +78,9 @@ def test_registry_rejects_unknown_tools() -> None:
 async def test_mcp_tool_discovery() -> None:
     client = McpClientAdapter()
 
-    tools = await client.discover_tools(
-        get_mcp_server(),
-    )
+    tools = await client.discover_tools(get_mcp_server())
 
-    assert tools == [
-        "evidence_lookup",
-        "health_check",
-    ]
+    assert tools == ["health_check"]
 
 
 @pytest.mark.anyio
@@ -100,38 +95,8 @@ async def test_mcp_health_tool_invocation() -> None:
     assert result == ToolExecutionResult(
         tool_name="health_check",
         success=True,
-        output="nexus-shield MCP server is healthy",
+        output="webpulse MCP server is healthy",
     )
-
-
-@pytest.mark.anyio
-async def test_mcp_evidence_tool_invocation() -> None:
-    client = McpClientAdapter()
-
-    result = await client.invoke(
-        get_mcp_server(),
-        "evidence_lookup",
-        {"query": "MCP evidence"},
-    )
-
-    assert result.success is True
-    assert result.output == (
-        "Evidence lookup prepared for query: MCP evidence"
-    )
-
-
-@pytest.mark.anyio
-async def test_mcp_tool_argument_validation_failure() -> None:
-    client = McpClientAdapter()
-
-    result = await client.invoke(
-        get_mcp_server(),
-        "evidence_lookup",
-        {"query": ""},
-    )
-
-    assert result.success is False
-    assert result.error is not None
 
 
 @pytest.mark.anyio
@@ -145,4 +110,3 @@ async def test_mcp_unknown_tool_failure() -> None:
 
     assert result.success is False
     assert result.error is not None
-

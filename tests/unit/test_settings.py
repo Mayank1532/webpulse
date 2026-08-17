@@ -1,4 +1,4 @@
-from mcp_liveops.config import Settings
+from webpulse.config import Settings
 
 
 def test_settings_can_be_constructed_without_environment_file() -> None:
@@ -11,4 +11,3 @@ def test_settings_can_be_constructed_without_environment_file() -> None:
     assert settings.anthropic_api_key.get_secret_value() == "test-key"
     assert settings.claude_model == "test-model"
     assert settings.claude_max_tokens == 256
-

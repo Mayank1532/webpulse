@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from mcp_liveops.acquisition import (
+from webpulse.acquisition import (
     AcquisitionStatus,
     WebAcquirer,
     WebAcquisitionResult,
@@ -149,4 +149,3 @@ def test_web_acquirer_uses_injected_normalizer() -> None:
     assert acquisition.status is AcquisitionStatus.SUCCESS
     assert acquisition.source_name == "Example"
     assert acquisition.content == "Example evidence content."
-

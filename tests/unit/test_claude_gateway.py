@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_liveops.config.settings import Settings
-from mcp_liveops.providers.claude.client import AnthropicClaudeClient
-from mcp_liveops.providers.claude.models import (
+from webpulse.config.settings import Settings
+from webpulse.providers.claude.client import AnthropicClaudeClient
+from webpulse.providers.claude.models import (
     ClaudeRequest,
     ClaudeToolDefinition,
 )

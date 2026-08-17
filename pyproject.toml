@@ -1,7 +1,7 @@
 [project]
-name = "mcp-liveops"
+name = "webpulse"
 version = "0.1.0"
-description = "MCP-LIVEOPS - MCP-Based Real-Time API Intelligence"
+description = "WEBPULSE - Agentic Live Web Intelligence with Claude and MCP"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -27,7 +27,7 @@ build-backend = "uv_build"
 package = true
 
 [tool.uv.build-backend]
-module-name = "mcp_liveops"
+module-name = "webpulse"
 module-root = "src"
 
 [tool.pytest.ini_options]
@@ -43,6 +43,7 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["UP017"]
+
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"

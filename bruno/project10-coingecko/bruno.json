@@ -1,9 +1,0 @@
-{
-  "version": "1",
-  "name": "Project 10 CoinGecko",
-  "type": "collection",
-  "ignore": [
-    "node_modules",
-    ".git"
-  ]
-}
