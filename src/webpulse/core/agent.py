@@ -15,6 +15,15 @@ from webpulse.providers.claude.models import (
     ClaudeToolDefinition,
 )
 
+WEBPULSE_SYSTEM_PROMPT = (
+    "You are the WEBPULSE live-information assistant. "
+    "Answer user questions accurately and concisely. "
+    "When current information from the live web is required, "
+    "use the available web retrieval tool instead of relying on stale knowledge. "
+    "After receiving tool results, ground your answer in the retrieved evidence. "
+    "Do not claim to have retrieved information that was not returned by a tool."
+)
+
 
 class LiveOpsAgent:
     """Coordinate Claude reasoning with MCP tool execution."""
@@ -34,7 +43,7 @@ class LiveOpsAgent:
         prompt: str,
         server: MCPServer,
     ) -> ClaudeResponse:
-        """Run Claude, execute requested MCP tools, and obtain a final answer."""
+        """Run Claude and execute its requested MCP tools."""
 
         tools = await self._mcp.discover_tool_definitions(server)
 
@@ -47,73 +56,81 @@ class LiveOpsAgent:
             for tool in tools
         )
 
-        first_response = self._claude.create_message(
+        messages: tuple[ClaudeMessage, ...] = (
+            ClaudeMessage(
+                role="user",
+                content=prompt,
+            ),
+        )
+
+        response = self._claude.create_message(
             ClaudeRequest(
                 prompt=prompt,
+                system_prompt=WEBPULSE_SYSTEM_PROMPT,
                 tools=claude_tools,
+                messages=messages,
             )
         )
 
-        if not first_response.tool_calls:
-            return first_response
+        while response.tool_calls:
+            tool_results: list[dict[str, object]] = []
 
-        tool_results: list[dict[str, object]] = []
+            assistant_content: list[dict[str, object]] = [
+                {
+                    "type": "tool_use",
+                    "id": tool_call.id,
+                    "name": tool_call.name,
+                    "input": tool_call.input,
+                }
+                for tool_call in response.tool_calls
+            ]
 
-        for tool_call in first_response.tool_calls:
-            result = await self._mcp.invoke(
-                server,
-                tool_call.name,
-                tool_call.input,
-            )
-
-            if result.success:
-                content = result.output
-            else:
-                content = json.dumps(
-                    {
-                        "error": result.error or "MCP tool execution failed.",
-                    },
-                    sort_keys=True,
+            for tool_call in response.tool_calls:
+                result = await self._mcp.invoke(
+                    server,
+                    tool_call.name,
+                    tool_call.input,
                 )
 
-            tool_results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": tool_call.id,
-                    "content": content,
-                    "is_error": not result.success,
-                }
-            )
+                if result.success:
+                    content = result.output
+                else:
+                    content = json.dumps(
+                        {
+                            "error": result.error
+                            or "MCP tool execution failed.",
+                        },
+                        sort_keys=True,
+                    )
 
-        assistant_content: list[dict[str, object]] = [
-            {
-                "type": "tool_use",
-                "id": tool_call.id,
-                "name": tool_call.name,
-                "input": tool_call.input,
-            }
-            for tool_call in first_response.tool_calls
-        ]
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call.id,
+                        "content": content,
+                        "is_error": not result.success,
+                    }
+                )
 
-        second_response = self._claude.create_message(
-            ClaudeRequest(
-                prompt=prompt,
-                tools=claude_tools,
-                messages=(
-                    ClaudeMessage(
-                        role="user",
-                        content=prompt,
-                    ),
-                    ClaudeMessage(
-                        role="assistant",
-                        content=assistant_content,
-                    ),
-                    ClaudeMessage(
-                        role="user",
-                        content=tool_results,
-                    ),
+            messages = (
+                *messages,
+                ClaudeMessage(
+                    role="assistant",
+                    content=assistant_content,
+                ),
+                ClaudeMessage(
+                    role="user",
+                    content=tool_results,
                 ),
             )
-        )
 
-        return second_response
+            response = self._claude.create_message(
+                ClaudeRequest(
+                    prompt=prompt,
+                    system_prompt=WEBPULSE_SYSTEM_PROMPT,
+                    tools=claude_tools,
+                    messages=messages,
+                )
+            )
+
+        return response
