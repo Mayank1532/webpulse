@@ -1,0 +1,10 @@
+﻿services:
+  nexus-shield:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NEXUS_SHIELD_ENV: development
+      NEXUS_SHIELD_LOG_LEVEL: INFO
+    env_file:
+      - .env

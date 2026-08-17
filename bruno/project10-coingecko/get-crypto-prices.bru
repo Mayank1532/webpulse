@@ -1,0 +1,33 @@
+meta {
+  name: Get Crypto Prices
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true
+  body: none
+  auth: none
+}
+
+tests {
+  test("response status is 200", function() {
+    expect(res.status).to.equal(200)
+  })
+
+  test("bitcoin price is present", function() {
+    expect(res.body.bitcoin.usd).to.be.a("number")
+  })
+
+  test("ethereum price is present", function() {
+    expect(res.body.ethereum.usd).to.be.a("number")
+  })
+
+  test("bitcoin 24h change is present", function() {
+    expect(res.body.bitcoin.usd_24h_change).to.be.a("number")
+  })
+
+  test("ethereum 24h change is present", function() {
+    expect(res.body.ethereum.usd_24h_change).to.be.a("number")
+  })
+}

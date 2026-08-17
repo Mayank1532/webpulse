@@ -1,0 +1,21 @@
+meta {
+  name: Invalid CoinGecko Request
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://api.coingecko.com/api/v3/simple/price?ids=definitely-not-a-real-coin&vs_currencies=usd
+  body: none
+  auth: none
+}
+
+tests {
+  test("response status is 200", function() {
+    expect(res.status).to.equal(200)
+  })
+
+  test("invalid coin does not produce usable price data", function() {
+    expect(res.body["definitely-not-a-real-coin"]).to.be.undefined
+  })
+}
