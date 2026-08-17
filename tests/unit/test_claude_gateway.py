@@ -226,7 +226,7 @@ def test_empty_prompt_is_rejected() -> None:
 
 
 def test_missing_api_key_is_rejected() -> None:
-    settings = Settings()
+    settings = Settings(anthropic_api_key="")
 
     with pytest.raises(
         ValueError,
