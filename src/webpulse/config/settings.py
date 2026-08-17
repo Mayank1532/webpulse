@@ -21,8 +21,13 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 1024
     claude_temperature: float = 0.0
     claude_timeout_seconds: float = 30.0
+
     webpulse_env: str = "development"
     webpulse_log_level: str = "INFO"
+
+    web_timeout_seconds: float = 15.0
+    web_max_response_bytes: int = 2_000_000
+    web_max_redirects: int = 5
 
 
 @lru_cache(maxsize=1)

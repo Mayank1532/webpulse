@@ -6,6 +6,11 @@ from webpulse.acquisition.models import (
     AcquisitionStatus,
 )
 from webpulse.acquisition.normalization import WebSourceNormalizer
+from webpulse.acquisition.retrieval_models import (
+    RetrievalStatus,
+    WebRetrievalResult,
+)
+from webpulse.acquisition.retriever import WebRetriever
 from webpulse.acquisition.web import WebAcquirer
 from webpulse.acquisition.web_models import (
     WebAcquisitionResult,
@@ -16,8 +21,11 @@ __all__ = [
     "AcquisitionResult",
     "AcquisitionStatus",
     "EvidenceAcquirer",
+    "RetrievalStatus",
     "WebAcquirer",
     "WebAcquisitionResult",
+    "WebRetrievalResult",
+    "WebRetriever",
     "WebSource",
     "WebSourceNormalizer",
 ]
