@@ -9,6 +9,10 @@ from webpulse.mcp.models import (
 )
 from webpulse.mcp.registry import ToolRegistry
 from webpulse.mcp.server import get_mcp_server
+from webpulse.mcp.web_tools import (
+    WebMcpTools,
+    register_web_tools,
+)
 
 __all__ = [
     "McpClientAdapter",
@@ -16,6 +20,8 @@ __all__ = [
     "ToolExecutionResult",
     "ToolMetadata",
     "ToolRegistry",
+    "WebMcpTools",
     "create_integrated_server",
     "get_mcp_server",
+    "register_web_tools",
 ]
