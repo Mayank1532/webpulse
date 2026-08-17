@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 from urllib.parse import urlparse
 
 import httpx
@@ -49,6 +50,12 @@ class WebRetriever:
             return self._invalid_url_result(
                 url,
                 "URL is not valid.",
+            )
+
+        if self._is_private_or_internal_host(parsed.hostname):
+            return self._failure(
+                validated_url,
+                "Requests to private or internal hosts are not allowed.",
             )
 
         try:
@@ -119,6 +126,37 @@ class WebRetriever:
                 validated_url,
                 f"Web request failed: {exc.__class__.__name__}.",
             )
+
+    @staticmethod
+    def _is_private_or_internal_host(
+        hostname: str | None,
+    ) -> bool:
+        """Return whether a hostname resolves directly to a private/internal IP."""
+
+        if not hostname:
+            return True
+
+        normalized_hostname = hostname.rstrip(".").lower()
+
+        if normalized_hostname in {
+            "localhost",
+            "localhost.localdomain",
+            "ip6-localhost",
+        }:
+            return True
+
+        try:
+            address = ipaddress.ip_address(normalized_hostname)
+        except ValueError:
+            return False
+
+        return (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_unspecified
+        )
 
     def _invalid_url_result(
         self,

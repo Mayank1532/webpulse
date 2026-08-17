@@ -117,18 +117,16 @@ def test_request_error_returns_failed_result() -> None:
     assert str(result.url) == "https://example.com/"
 
 
-def test_non_http_scheme_is_rejected_without_network_call() -> None:
+def test_unsupported_protocol_is_rejected() -> None:
     client = Mock()
 
     retriever = WebRetriever(client=client)
 
-    result = retriever.retrieve("ftp://example.com/file.txt")
+    result = retriever.retrieve("ftp://example.com/resource")
 
     assert result.status is RetrievalStatus.FAILED
     assert result.url is None
-    assert result.message.startswith(
-        "Only HTTP and HTTPS URLs are supported."
-    )
+    assert result.message.startswith("Only HTTP and HTTPS URLs are supported.")
     client.get.assert_not_called()
 
 
@@ -141,9 +139,7 @@ def test_missing_host_is_rejected_without_network_call() -> None:
 
     assert result.status is RetrievalStatus.FAILED
     assert result.url is None
-    assert result.message.startswith(
-        "URL must contain a valid host."
-    )
+    assert result.message.startswith("URL must contain a valid host.")
     client.get.assert_not_called()
 
 
@@ -212,3 +208,66 @@ def test_invalid_content_length_does_not_break_retrieval() -> None:
 
     assert result.status is RetrievalStatus.SUCCESS
     assert result.content == "<html><body>Hello WEBPULSE</body></html>"
+
+
+def test_localhost_is_rejected() -> None:
+    client = Mock()
+
+    retriever = WebRetriever(client=client)
+
+    result = retriever.retrieve("http://localhost:8000")
+
+    assert result.status is RetrievalStatus.FAILED
+    assert result.message == "Requests to private or internal hosts are not allowed."
+    client.get.assert_not_called()
+
+
+def test_loopback_ip_is_rejected() -> None:
+    client = Mock()
+
+    retriever = WebRetriever(client=client)
+
+    result = retriever.retrieve("http://127.0.0.1:8000")
+
+    assert result.status is RetrievalStatus.FAILED
+    assert result.message == "Requests to private or internal hosts are not allowed."
+    client.get.assert_not_called()
+
+
+def test_private_network_ip_is_rejected() -> None:
+    client = Mock()
+
+    retriever = WebRetriever(client=client)
+
+    result = retriever.retrieve("http://192.168.1.10")
+
+    assert result.status is RetrievalStatus.FAILED
+    assert result.message == "Requests to private or internal hosts are not allowed."
+    client.get.assert_not_called()
+
+
+def test_link_local_ip_is_rejected() -> None:
+    client = Mock()
+
+    retriever = WebRetriever(client=client)
+
+    result = retriever.retrieve("http://169.254.1.10")
+
+    assert result.status is RetrievalStatus.FAILED
+    assert result.message == "Requests to private or internal hosts are not allowed."
+    client.get.assert_not_called()
+
+
+def test_public_host_is_not_rejected_by_basic_network_check() -> None:
+    client = Mock()
+    client.get.return_value = make_response()
+
+    retriever = WebRetriever(client=client)
+
+    result = retriever.retrieve("https://example.com")
+
+    assert result.status is RetrievalStatus.SUCCESS
+    client.get.assert_called_once_with(
+        "https://example.com",
+        follow_redirects=True,
+    )
