@@ -1,5 +1,7 @@
 """Web acquisition package."""
 
+from webpulse.acquisition.document_models import WebDocument
+from webpulse.acquisition.html_extractor import HTMLExtractor
 from webpulse.acquisition.interface import EvidenceAcquirer
 from webpulse.acquisition.models import (
     AcquisitionResult,
@@ -21,9 +23,11 @@ __all__ = [
     "AcquisitionResult",
     "AcquisitionStatus",
     "EvidenceAcquirer",
+    "HTMLExtractor",
     "RetrievalStatus",
     "WebAcquirer",
     "WebAcquisitionResult",
+    "WebDocument",
     "WebRetrievalResult",
     "WebRetriever",
     "WebSource",
